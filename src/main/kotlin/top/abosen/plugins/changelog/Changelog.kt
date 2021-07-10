@@ -33,10 +33,11 @@ class Changelog(extension: ChangelogPluginExtension) {
     private val items = tree.children
         .groupByType(MarkdownElementTypes.ATX_2) {
             it.children.last().text().trim().run {
+                // ## 后面的部分
                 when (this) {
                     extension.unreleasedTerm -> this
                     else -> split("""[^-+.0-9a-zA-Z]+""".toRegex()).firstOrNull(
-                        extension.headerParserRegex ::matches
+                        extension.headerParserRegex::matches
                     ) ?: throw HeaderParseException(this)
                 }
             }
@@ -44,20 +45,21 @@ class Changelog(extension: ChangelogPluginExtension) {
         .filterKeys(String::isNotEmpty)
         .mapValues { (key, value) ->
             value
-                .drop(1)
+                .drop(1)    // 跳过 h2
                 .groupByType(MarkdownElementTypes.ATX_3) {
-                    it.text().trimStart('#').trim()
+                    it.children.last().text().trim()
                 }
+                .filterKeys(String::isNotEmpty)
                 .mapValues {
                     it.value
                         .joinToString("") { node -> node.text() }
                         .split("""\n${Regex.escape(extension.itemPrefix)}""".toRegex())
                         .map { line -> extension.itemPrefix + line.trim('\n') }
-                        .drop(1)
+                        .drop(1)    // 跳过 h3
                         .filterNot(String::isEmpty)
                 }.run {
                     val isUnreleased = key == extension.unreleasedTerm
-                    Item(key, value.first(), this, isUnreleased)
+                    Item(Version.parse(value.first().text()), value.first(), this, isUnreleased)
                 }
         }
 
@@ -70,7 +72,7 @@ class Changelog(extension: ChangelogPluginExtension) {
     fun getAll() = items
 
     inner class Item(
-        val version: String,
+        val version: Version,
         private val header: ASTNode,
         private val items: Map<String, List<String>>,
         private val isUnreleased: Boolean = false
@@ -109,22 +111,23 @@ class Changelog(extension: ChangelogPluginExtension) {
                 }
             }
 
-        fun toHTML():String = TODO()
+        fun toHTML(): String = TODO()
 
-        fun toPlainText():String = TODO()
+        fun toPlainText(): String = TODO()
 
         override fun toString() = toText()
     }
 
     private fun ASTNode.text() = getTextInNode(content).toString()
 
+    /** 忽略目标[type]之前的内容，[values] 包含 [type]同级 及 下级内容*/
     private fun List<ASTNode>.groupByType(
         type: IElementType,
         getKey: ((item: ASTNode) -> String)? = null
     ): Map<String, List<ASTNode>> {
         var key = ""
         return groupBy {
-            if (it.type == type) {
+            if (it.type == type) {  // 开始一个新的key
                 key = getKey?.invoke(it) ?: it.text()
             }
             key

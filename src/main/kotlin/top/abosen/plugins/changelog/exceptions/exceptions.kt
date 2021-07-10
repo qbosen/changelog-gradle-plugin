@@ -1,5 +1,7 @@
 package top.abosen.plugins.changelog.exceptions
 
+import top.abosen.plugins.changelog.ChangelogPluginExtension
+
 /**
  * @author  qiubaisen
  * @date  2021/6/7

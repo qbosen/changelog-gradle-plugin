@@ -6,6 +6,7 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.Optional
+import top.abosen.plugins.changelog.exceptions.MissingFileException
 import top.abosen.plugins.changelog.exceptions.VersionNotSpecifiedException
 import java.io.File
 import java.util.regex.Pattern
@@ -16,15 +17,6 @@ import java.util.regex.Pattern
  */
 open class ChangelogPluginExtension(objects: ObjectFactory, private val projectDir: File) {
 
-    /**
-     * 语义化的版本 [semver](https://semver.org/)
-     *
-     *  cg1 = major, cg2 = minor, cg3 = patch, cg4 = prerelease and cg5 = buildmetadata
-     */
-    @Suppress("MaxLineLength")
-    val semVerRegex =
-        """^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?|(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?${'$'}""".trimMargin()
-            .toRegex() // ktlint-disable max-line-length
 
     @Optional
     @Internal
@@ -39,6 +31,7 @@ open class ChangelogPluginExtension(objects: ObjectFactory, private val projectD
         get() = groupsProperty.getOrElse(emptyList())
         set(value) = groupsProperty.set(value)
 
+    /** patch 的适合按照这个格式*/
     @Optional
     @Internal
     private val headerProperty = objects.property(Closure::class.java).apply {
@@ -48,10 +41,11 @@ open class ChangelogPluginExtension(objects: ObjectFactory, private val projectD
         get() = headerProperty.get()
         set(value) = headerProperty.set(value)
 
+    /**解析markdown的适合 按照这个格式，默认是[semVerRegex]*/
     @Optional
     @Internal
     private val headerParserRegexProperty = objects.property(Regex::class.java).apply {
-        set(semVerRegex)
+        set(Version.semVerRegex)
     }
     var headerParserRegex: Regex
         get() = headerParserRegexProperty.get()
@@ -72,6 +66,14 @@ open class ChangelogPluginExtension(objects: ObjectFactory, private val projectD
     var path: String
         get() = pathProperty.get()
         set(value) = pathProperty.set(value)
+
+    val content: String
+        get() = File(path).run {
+            if (path.isBlank() || !exists()) {
+                throw MissingFileException(path)
+            }
+            readText()
+        }
 
     @Optional
     @Internal

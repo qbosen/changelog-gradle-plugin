@@ -10,7 +10,7 @@ import java.io.File
  * @date 2021/6/7
  */
 open class InitializeChangelogTask : DefaultTask() {
-    private val extension = project.extensions.getByType(ChangelogPluginExtension::class.java)
+    private val extension:ChangelogPluginExtension = project.extensions.getByType(ChangelogPluginExtension::class.java)
 
     @TaskAction
     fun run() {
